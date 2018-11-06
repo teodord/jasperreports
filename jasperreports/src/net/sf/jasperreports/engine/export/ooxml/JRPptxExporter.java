@@ -40,6 +40,8 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import net.sf.jasperreports.annotations.properties.Property;
+import net.sf.jasperreports.annotations.properties.PropertyScope;
 import net.sf.jasperreports.engine.DefaultJasperReportsContext;
 import net.sf.jasperreports.engine.JRAbstractExporter;
 import net.sf.jasperreports.engine.JRException;
@@ -68,8 +70,10 @@ import net.sf.jasperreports.engine.export.JRExportProgressMonitor;
 import net.sf.jasperreports.engine.export.JRHyperlinkProducer;
 import net.sf.jasperreports.engine.export.JRXmlExporter;
 import net.sf.jasperreports.engine.export.LengthUtil;
+import net.sf.jasperreports.engine.export.ooxml.type.PptxFieldTypeEnum;
 import net.sf.jasperreports.engine.export.zip.ExportZipEntry;
 import net.sf.jasperreports.engine.export.zip.FileBufferedZipEntry;
+import net.sf.jasperreports.engine.type.BandTypeEnum;
 import net.sf.jasperreports.engine.type.LineDirectionEnum;
 import net.sf.jasperreports.engine.type.LineStyleEnum;
 import net.sf.jasperreports.engine.type.ModeEnum;
@@ -82,6 +86,7 @@ import net.sf.jasperreports.export.ExporterInputItem;
 import net.sf.jasperreports.export.OutputStreamExporterOutput;
 import net.sf.jasperreports.export.PptxExporterConfiguration;
 import net.sf.jasperreports.export.PptxReportConfiguration;
+import net.sf.jasperreports.properties.PropertyConstants;
 import net.sf.jasperreports.renderers.DataRenderable;
 import net.sf.jasperreports.renderers.DimensionRenderable;
 import net.sf.jasperreports.renderers.Renderable;
@@ -127,6 +132,55 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 	 * @deprecated Replaced by {@link PptxReportConfiguration#PROPERTY_IGNORE_HYPERLINK}.
 	 */
 	public static final String PROPERTY_IGNORE_HYPERLINK = PptxReportConfiguration.PROPERTY_IGNORE_HYPERLINK;
+	
+	/**
+	 * Property that specifies if this element, when found on the first page of the document, should be exported into the slide master,
+	 * and then ignored on all pages/slides. 
+	 */
+	@Property(
+			category = PropertyConstants.CATEGORY_EXPORT,
+			scopes = {PropertyScope.TEXT_ELEMENT},
+			valueType = Boolean.class,
+			defaultValue = PropertyConstants.BOOLEAN_FALSE
+			)
+	public static final String PROPERTY_TO_SLIDE_MASTER = PPTX_EXPORTER_PROPERTIES_PREFIX + "to.slide.master";
+
+	/**
+	 * Property that specifies the field type associated with this element in the PPTX export. 
+	 * When this property is set, the element value will be automatically updated when the presentation is open.
+	 * <ul/>
+	 * <li>slidenum - the current slide number will be displayed in this field</li>
+	 * <li>datetime - the current date/time will be displayed in this field, according to some predefined patterns:
+	 * <ol>
+	 * <li>MM/dd/yyyy</li>
+	 * <li>EEEE, MMMM dd, yyyy</li>
+	 * <li>dd MMMM yyyy</li>
+	 * <li>MMMM dd, yyyy</li>
+	 * <li>dd-MMM-yy</li>
+	 * <li>MMMM yy</li>
+	 * <li>MMM-yy</li>
+	 * <li>MM/dd/yyyy hh:mm a</li>
+	 * <li>MM/dd/yyyy hh:mm:ss a</li>
+	 * <li>HH:mm</li>
+	 * <li>HH:mm:ss</li>
+	 * <li>hh:mm a</li>
+	 * <li>hh:mm:ss a</li>
+	 * </ol>
+	 * If none of the above patterns are set for the element, the date/time will be displayed using the default pattern of the PPTX viewer.
+	 * </li>
+	 * <ul/>
+	 */
+	@Property(
+			category = PropertyConstants.CATEGORY_EXPORT,
+			scopes = {PropertyScope.TEXT_ELEMENT}
+			)
+	public static final String PROPERTY_FIELD_TYPE = PPTX_EXPORTER_PROPERTIES_PREFIX + "field.type";
+
+	public static final String FIELD_TYPE_SLIDENUM = "slidenum";
+	public static final String FIELD_TYPE_DATETIME = "datetime";
+	
+	
+	
 
 	/**
 	 *
@@ -173,10 +227,9 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 
 	protected class ExporterContext extends BaseExporterContext implements JRPptxExporterContext
 	{
-		public ExporterContext()
-		{
-		}
-		
+		/**
+		 * @deprecated To be removed.
+		 */
 		@Override
 		public PptxSlideHelper getSlideHelper()
 		{
@@ -348,6 +401,20 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 		{
 			coreHelper.exportProperty(PropsCoreHelper.PROPERTY_KEYWORDS, keywords);
 		}
+		
+		Integer slideMasterReport = configuration.getSlideMasterReport();
+		if (slideMasterReport == null)
+		{
+			slideMasterReport = 1;
+		}
+		int slideMasterReportIndex = slideMasterReport - 1;
+		
+		Integer slideMasterPage = configuration.getSlideMasterPage();
+		if (slideMasterPage == null)
+		{
+			slideMasterPage = 1;
+		}
+		int slideMasterPageIndex = slideMasterPage - 1;
 
 //		DocxStyleHelper styleHelper = 
 //			new DocxStyleHelper(
@@ -357,10 +424,48 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 //				);
 //		styleHelper.export(jasperPrintList);
 //		styleHelper.close();
-
+		
 		List<ExporterInputItem> items = exporterInput.getItems();
 
-		for(reportIndex = 0; reportIndex < items.size(); reportIndex++)
+		boolean hasSlideMasterElements = false;
+
+		createSlideMaster();
+
+		if (
+			0 <= slideMasterReportIndex
+			&& slideMasterReportIndex < items.size()
+			)
+		{
+			if (Thread.interrupted())
+			{
+				throw new ExportInterruptedException();
+			}
+
+			ExporterInputItem item = items.get(slideMasterReportIndex);
+			
+			setCurrentExporterInputItem(item);
+			
+			List<JRPrintPage> pages = jasperPrint.getPages();
+			
+			if (pages != null && pages.size() > 0)
+			{
+				PageRange pageRange = getPageRange();
+				int startPageIndex = (pageRange == null || pageRange.getStartPageIndex() == null) ? 0 : pageRange.getStartPageIndex();
+				int endPageIndex = (pageRange == null || pageRange.getEndPageIndex() == null) ? (pages.size() - 1) : pageRange.getEndPageIndex();
+				
+				if (
+					startPageIndex <= slideMasterPageIndex
+					&& slideMasterPageIndex <= endPageIndex
+					)
+				{
+					hasSlideMasterElements = exportPageToSlideMaster(pages.get(slideMasterPageIndex), configuration.isBackgroundAsSlideMaster());
+				}
+			}
+		}
+
+		closeSlideMaster();
+		
+		for (reportIndex = 0; reportIndex < items.size(); reportIndex++)
 		{
 			ExporterInputItem item = items.get(reportIndex);
 			
@@ -372,28 +477,34 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 				PageRange pageRange = getPageRange();
 				int startPageIndex = (pageRange == null || pageRange.getStartPageIndex() == null) ? 0 : pageRange.getStartPageIndex();
 				int endPageIndex = (pageRange == null || pageRange.getEndPageIndex() == null) ? (pages.size() - 1) : pageRange.getEndPageIndex();
-
-				JRPrintPage page = null;
-				for(pageIndex = startPageIndex; pageIndex <= endPageIndex; pageIndex++)
+				
+				net.sf.jasperreports.engine.util.PageRange[] hideSmPageRanges = null;
+				String hideSlideMasterPages = getCurrentItemConfiguration().getHideSlideMasterPages();
+				if (hideSlideMasterPages != null && hideSlideMasterPages.trim().length() > 0)
+				{
+					hideSmPageRanges = net.sf.jasperreports.engine.util.PageRange.parse(hideSlideMasterPages);
+				}
+				
+				for (pageIndex = startPageIndex; pageIndex <= endPageIndex; pageIndex++)
 				{
 					if (Thread.interrupted())
 					{
 						throw new ExportInterruptedException();
 					}
 
-					page = pages.get(pageIndex);
+					JRPrintPage page = pages.get(pageIndex);
 
-					createSlide(null);//FIXMEPPTX
+					createSlide(net.sf.jasperreports.engine.util.PageRange.isPageInRanges(pageIndex + 1, hideSmPageRanges));
 					
 					slideIndex++;
 
-					exportPage(page);
+					exportPage(page, configuration.isBackgroundAsSlideMaster(), hasSlideMasterElements);
+
+					closeSlide();
 				}
 			}
 		}
 		
-		closeSlide();
-
 		presentationHelper.exportFooter(jasperPrint);
 		presentationHelper.close();
 
@@ -429,11 +540,60 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 	/**
 	 *
 	 */
-	protected void exportPage(JRPrintPage page) throws JRException
+	protected boolean exportPageToSlideMaster(JRPrintPage page, boolean isBackgroundAsSlideMaster) throws JRException
 	{
 		frameIndexStack = new ArrayList<Integer>();
 
-		exportElements(page.getElements());
+		boolean hasSlideMasterElements = false;
+		
+		elementIndex = 0;
+		
+		for (JRPrintElement element : page.getElements())
+		{
+			if (
+				(isBackgroundAsSlideMaster && element.getOrigin().getBandTypeValue() == BandTypeEnum.BACKGROUND)
+				|| getPropertiesUtil().getBooleanProperty(element, PROPERTY_TO_SLIDE_MASTER, false)
+				)
+			{
+				if (filter == null || filter.isToExport(element))
+				{
+					exportElement(element);
+
+					hasSlideMasterElements = true;
+				}
+			}
+
+			elementIndex++;
+		}
+		
+		return hasSlideMasterElements;
+	}
+
+
+	/**
+	 *
+	 */
+	protected void exportPage(JRPrintPage page, boolean isBackgroundAsSlideMaster, boolean hasToSlideMasterElements) throws JRException
+	{
+		frameIndexStack = new ArrayList<Integer>();
+
+		elementIndex = 0;
+		
+		for (JRPrintElement element : page.getElements())
+		{
+			if (
+				!(isBackgroundAsSlideMaster && element.getOrigin().getBandTypeValue() == BandTypeEnum.BACKGROUND)
+				&& !(hasToSlideMasterElements && getPropertiesUtil().getBooleanProperty(element, PROPERTY_TO_SLIDE_MASTER, false))
+				)
+			{
+				if (filter == null || filter.isToExport(element))
+				{
+					exportElement(element);
+				}
+			}
+			
+			elementIndex++;
+		}
 		
 		JRExportProgressMonitor progressMonitor = getCurrentItemConfiguration().getProgressMonitor();
 		if (progressMonitor != null)
@@ -443,10 +603,27 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 	}
 
 
-	protected void createSlide(String name)
+	protected void createSlideMaster()
 	{
-		closeSlide();
+		ExportZipEntry slideMasterRelsEntry = pptxZip.addSlideMasterRels();
+		Writer slideMasterRelsWriter = slideMasterRelsEntry.getWriter();
+		slideRelsHelper = new PptxSlideRelsHelper(jasperReportsContext, slideMasterRelsWriter);
 		
+		ExportZipEntry slideMasterEntry = pptxZip.addSlideMaster();
+		Writer slideMasterWriter = slideMasterEntry.getWriter();
+		slideHelper = new PptxSlideHelper(jasperReportsContext, slideMasterWriter, slideRelsHelper);
+
+//		cellHelper = new XlsxCellHelper(sheetWriter, styleHelper);
+//		
+		runHelper = new PptxRunHelper(jasperReportsContext, slideMasterWriter, getExporterKey());
+		
+		slideHelper.exportHeader(true, false);
+		slideRelsHelper.exportHeader(true);
+	}
+
+
+	protected void createSlide(boolean hideSlideMaster)
+	{
 		presentationHelper.exportSlide(slideIndex + 1);
 		ctHelper.exportSlide(slideIndex + 1);
 		presentationRelsHelper.exportSlide(slideIndex + 1);
@@ -465,17 +642,31 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 //		
 		runHelper = new PptxRunHelper(jasperReportsContext, slideWriter, getExporterKey());
 		
-		slideHelper.exportHeader();
-		slideRelsHelper.exportHeader();
-		
+		slideHelper.exportHeader(false, hideSlideMaster);
+		slideRelsHelper.exportHeader(false);
 	}
 
+
+	protected void closeSlideMaster()
+	{
+		if (slideHelper != null)
+		{
+			slideHelper.exportFooter(true);
+			
+			slideHelper.close();
+
+			slideRelsHelper.exportFooter();
+			
+			slideRelsHelper.close();
+		}
+	}
+	
 
 	protected void closeSlide()
 	{
 		if (slideHelper != null)
 		{
-			slideHelper.exportFooter();
+			slideHelper.exportFooter(false);
 			
 			slideHelper.close();
 
@@ -493,45 +684,49 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 	{
 		if (elements != null && elements.size() > 0)
 		{
-			JRPrintElement element;
-			for(int i = 0; i < elements.size(); i++)
+			for (JRPrintElement element : elements)
 			{
-				elementIndex = i;
-				
-				element = elements.get(i);
-				
 				if (filter == null || filter.isToExport(element))
 				{
-					if (element instanceof JRPrintLine)
-					{
-						exportLine((JRPrintLine)element);
-					}
-					else if (element instanceof JRPrintRectangle)
-					{
-						exportRectangle((JRPrintRectangle)element);
-					}
-					else if (element instanceof JRPrintEllipse)
-					{
-						exportEllipse((JRPrintEllipse)element);
-					}
-					else if (element instanceof JRPrintImage)
-					{
-						exportImage((JRPrintImage)element);
-					}
-					else if (element instanceof JRPrintText)
-					{
-						exportText((JRPrintText)element);
-					}
-					else if (element instanceof JRPrintFrame)
-					{
-						exportFrame((JRPrintFrame)element);
-					}
-					else if (element instanceof JRGenericPrintElement)
-					{
-						exportGenericElement((JRGenericPrintElement) element);
-					}
+					exportElement(element);
 				}
 			}
+		}
+	}
+	
+
+	/**
+	 *
+	 */
+	protected void exportElement(JRPrintElement element) throws JRException
+	{
+		if (element instanceof JRPrintLine)
+		{
+			exportLine((JRPrintLine)element);
+		}
+		else if (element instanceof JRPrintRectangle)
+		{
+			exportRectangle((JRPrintRectangle)element);
+		}
+		else if (element instanceof JRPrintEllipse)
+		{
+			exportEllipse((JRPrintEllipse)element);
+		}
+		else if (element instanceof JRPrintImage)
+		{
+			exportImage((JRPrintImage)element);
+		}
+		else if (element instanceof JRPrintText)
+		{
+			exportText((JRPrintText)element);
+		}
+		else if (element instanceof JRPrintFrame)
+		{
+			exportFrame((JRPrintFrame)element);
+		}
+		else if (element instanceof JRGenericPrintElement)
+		{
+			exportGenericElement((JRGenericPrintElement) element);
 		}
 	}
 
@@ -995,7 +1190,15 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 
 		if (textLength > 0)
 		{
-			exportStyledText(text.getStyle(), styledText, getTextLocale(text));
+			PptxFieldTypeEnum fieldTypeEnum = PptxFieldTypeEnum.getByName(JRPropertiesUtil.getOwnProperty(text, PROPERTY_FIELD_TYPE));
+			String uuid = null;
+			String fieldType = null;
+			if (fieldTypeEnum != null)
+			{
+				uuid = text.getUUID().toString().toUpperCase();
+				fieldType = fieldTypeEnum.getName();
+			}
+			exportStyledText(text.getStyle(), styledText, getTextLocale(text), fieldType, uuid);
 		}
 
 //		if (startedHyperlink)
@@ -1015,7 +1218,7 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 	/**
 	 *
 	 */
-	protected void exportStyledText(JRStyle style, JRStyledText styledText, Locale locale)
+	protected void exportStyledText(JRStyle style, JRStyledText styledText, Locale locale, String fieldType, String uuid)
 	{
 		String text = styledText.getText();
 
@@ -1025,14 +1228,29 @@ public class JRPptxExporter extends JRAbstractExporter<PptxReportConfiguration, 
 
 		while(runLimit < styledText.length() && (runLimit = iterator.getRunLimit()) <= styledText.length())
 		{
-			runHelper.export(
-				style, 
-				iterator.getAttributes(), 
-				text.substring(iterator.getIndex(), runLimit),
-				locale,
-				invalidCharReplacement
-				);
-
+			if(fieldType != null)
+			{
+				runHelper.export(
+					style, 
+					iterator.getAttributes(), 
+					text.substring(iterator.getIndex(), runLimit),
+					locale,
+					invalidCharReplacement,
+					fieldType,
+					uuid
+					);
+			}
+			else
+			{
+				runHelper.export(
+						style, 
+						iterator.getAttributes(), 
+						text.substring(iterator.getIndex(), runLimit),
+						locale,
+						invalidCharReplacement
+						);
+				
+			}
 			iterator.setIndex(runLimit);
 		}
 	}

@@ -91,6 +91,51 @@ public interface PptxExporterConfiguration extends ExporterConfiguration
 	public static final String PROPERTY_METADATA_APPLICATION = JRPropertiesUtil.PROPERTY_PREFIX + "export.pptx.metadata.application";
 
 	/**
+	 * Property that provides a default value for the {@link #getSlideMasterReport()} export configuration setting.
+	 * <p>
+	 * Default value is <code>1</code>.
+	 * 
+	 * @see JRPropertiesUtil
+	 */
+	@Property(
+			category = PropertyConstants.CATEGORY_EXPORT,
+			defaultValue = "1",
+			scopes = {PropertyScope.CONTEXT, PropertyScope.REPORT},
+			valueType = Integer.class
+			)
+	public static final String PROPERTY_SLIDE_MASTER_REPORT = JRPropertiesUtil.PROPERTY_PREFIX + "export.pptx.slide.master.report";
+
+	/**
+	 * Property that provides a default value for the {@link #getSlideMasterPage()} export configuration setting.
+	 * <p>
+	 * Default value is <code>1</code>.
+	 * 
+	 * @see JRPropertiesUtil
+	 */
+	@Property(
+			category = PropertyConstants.CATEGORY_EXPORT,
+			defaultValue = "1",
+			scopes = {PropertyScope.CONTEXT, PropertyScope.REPORT},
+			valueType = Integer.class
+			)
+	public static final String PROPERTY_SLIDE_MASTER_PAGE = JRPropertiesUtil.PROPERTY_PREFIX + "export.pptx.slide.master.page";
+
+	/**
+	 * Property that provides a default value for the {@link #isBackgroundAsSlideMaster()} export configuration flag.
+	 * <p>
+	 * Default value is <code>false</code>.
+	 * 
+	 * @see JRPropertiesUtil
+	 */
+	@Property(
+			category = PropertyConstants.CATEGORY_EXPORT,
+			defaultValue = PropertyConstants.BOOLEAN_FALSE,
+			scopes = {PropertyScope.CONTEXT, PropertyScope.REPORT},
+			valueType = Boolean.class
+			)
+	public static final String PROPERTY_BACKGROUND_AS_SLIDE_MASTER = JRPropertiesUtil.PROPERTY_PREFIX + "export.pptx.background.as.slide.master";
+
+	/**
 	 * The Title of the PPTX document.
 	 */
 	@ExporterProperty(PROPERTY_METADATA_TITLE)
@@ -119,4 +164,38 @@ public interface PptxExporterConfiguration extends ExporterConfiguration
 	 */
 	@ExporterProperty(PROPERTY_METADATA_APPLICATION)
 	public String getMetadataApplication();
+
+	/**
+	 * Flag that specifies whether the elements from the background section on the first page should be exported as the contents of the slide master,
+	 * and then ignoring the background section elements for all pages/slides.
+	 * 
+	 * @see #PROPERTY_BACKGROUND_AS_SLIDE_MASTER
+	 */
+	@ExporterProperty(
+		value=PROPERTY_BACKGROUND_AS_SLIDE_MASTER, 
+		booleanDefault=false
+		)
+	public Boolean isBackgroundAsSlideMaster();
+
+	/**
+	 * Specifies the report (export input item) from which the content of the slide master should be extracted. The default value is 1 (first report).
+	 * 
+	 * @see #PROPERTY_SLIDE_MASTER_REPORT
+	 */
+	@ExporterProperty(
+		value=PROPERTY_SLIDE_MASTER_REPORT, 
+		intDefault=1
+		)
+	public Integer getSlideMasterReport();
+
+	/**
+	 * Specifies the page from which the content of the slide master should be extracted. The default value is 1 (first page).
+	 * 
+	 * @see #PROPERTY_SLIDE_MASTER_PAGE
+	 */
+	@ExporterProperty(
+		value=PROPERTY_SLIDE_MASTER_PAGE, 
+		intDefault=1
+		)
+	public Integer getSlideMasterPage();
 }

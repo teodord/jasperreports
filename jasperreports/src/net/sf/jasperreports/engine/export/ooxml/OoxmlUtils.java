@@ -51,5 +51,5 @@ public final class OoxmlUtils {
 		}
 		return PaperSizeEnum.UNDEFINED;
 	}
-
+	
 }

@@ -53,11 +53,15 @@ public class PptxSlideRelsHelper extends BaseHelper
 	/**
 	 * 
 	 */
-	public void exportHeader()
+	public void exportHeader(boolean isSlideMaster)
 	{
 		write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
 		write("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\n");
-		write("<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"../slideLayouts/slideLayout1.xml\"/>\n");
+		if (isSlideMaster)
+		{
+			write("<Relationship Id=\"rIdTh\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\" Target=\"../theme/theme1.xml\"/>\n");
+		}
+		write("<Relationship Id=\"rIdSl\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"../slideLayouts/slideLayout1.xml\"/>\n");
 	}
 	
 	/**

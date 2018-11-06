@@ -4490,6 +4490,86 @@ Its value is used as default for the
   </configProperty>
   
   
+  <!-- net.sf.jasperreports.export.pptx.background.as.slide.master -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.background.as.slide.master">
+    <description>
+Property that specifies whether the elements from the background section on the first page should be exported as the contents of the slide master, 
+and then ignoring the background section elements for all pages/slides.
+<br/>
+Its value is used as default for the 
+<api href="net/sf/jasperreports/export/PptxExporterConfiguration.html#isBackgroundAsSlideMaster--">isBackgroundAsSlideMaster()</api> PPTX export configuration setting.
+    </description>
+  </configProperty>
+  
+  
+  <!-- net.sf.jasperreports.export.pptx.to.slide.master -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.to.slide.master">
+    <description>
+Property that specifies whether the element, when found on the first page, should be exported as the contents of the slide master, 
+and then ignored for all pages/slides.
+    </description>
+  </configProperty>
+  
+  
+  <!-- net.sf.jasperreports.export.pptx.slide.master.report -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.slide.master.report">
+    <description>
+Property that specifies from which report is the page providing slide master content coming from, in a multi-report batch export. The default is 1, meaning the first report.
+    </description>
+  </configProperty>
+  
+  
+  <!-- net.sf.jasperreports.export.pptx.slide.master.page -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.slide.master.page">
+    <description>
+Property that specifies the page number from which the slide master content is coming from. The default is 1, meaning the first page.
+    </description>
+  </configProperty>
+  
+  
+  <!-- net.sf.jasperreports.export.pptx.hide.slide.master.pages -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.hide.slide.master.pages">
+    <description>
+Property specifying the pages and/or page ranges for which the contents of the slide master should be hidden on.
+The value of the property should be a comma separated list of page numbers or page ranges. Page ranges are made of page numbers separated by a hyphen-minus character. 
+For example: 1, 3-5, 7 
+    </description>
+  </configProperty>
+  
+  
+  <!-- net.sf.jasperreports.export.pptx.field.type -->
+  
+  <configProperty name="net.sf.jasperreports.export.pptx.field.type">
+    <description>
+Property that specifies the field type associated with this element in the PPTX export. 
+When this property is set, the element value will be automatically updated when the presentation is open. 
+The result displayed in the field depends on the report locale.
+<ul>
+<li><code>slidenum</code> - the current slide number will be displayed in this field</li>
+<li><code>datetime</code> - the current date/time will be displayed in this field, according to default date/time rendering format of the PPTX viewer application</li>
+<li><code>datetime1</code> - the current date will be displayed using a localized 'MM/dd/yyyy' date format</li>
+<li><code>datetime2</code> - the current date will be displayed using a localized 'Day, Month dd, yyyy' date format</li>
+<li><code>datetime3</code> - the current date will be displayed using a localized 'dd Month yyyy' date format</li>
+<li><code>datetime4</code> - the current date will be displayed using a localized 'Month dd, yyyy' date format</li>
+<li><code>datetime5</code> - the current date will be displayed using a localized 'dd-Mon-yy' date format</li>
+<li><code>datetime6</code> - the current date will be displayed using a localized 'Month yy' date format</li>
+<li><code>datetime7</code> - the current date will be displayed using a localized 'Mon-yy' date format</li>
+<li><code>datetime8</code> - the current date/time will be displayed using a localized 'MM/dd/yyyy hh:mm a' date time format</li>
+<li><code>datetime9</code> - the current date/time will be displayed using a localized 'MM/dd/yyyy hh:mm:ss a' date time format</li>
+<li><code>datetime10</code> - the current time will be displayed using a localized 'HH:mm' timestamp format</li>
+<li><code>datetime11</code> - the current time will be displayed using a localized 'HH:mm:ss' timestamp format</li>
+<li><code>datetime12</code> - the current time will be displayed using a localized 'hh:mm a' timestamp format</li>
+<li><code>datetime13</code> - the current time will be displayed using a localized 'hh:mm:ss a' timestamp format</li>
+</ul>
+    </description>
+  </configProperty>
+  
+  
   <!-- net.sf.jasperreports.export.text.character.width -->
   
   <configProperty name="net.sf.jasperreports.export.text.character.width">

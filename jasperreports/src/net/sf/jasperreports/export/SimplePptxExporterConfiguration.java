@@ -34,6 +34,9 @@ public class SimplePptxExporterConfiguration extends SimpleExporterConfiguration
 	private String metadataSubject;
 	private String metadataKeywords;
 	private String metadataApplication;
+	private Boolean isBackgroundAsSlideMaster;
+	private Integer slideMasterReport;
+	private Integer slideMasterPage;
 	
 	@Override
 	public String getMetadataTitle()
@@ -103,5 +106,47 @@ public class SimplePptxExporterConfiguration extends SimpleExporterConfiguration
 	public void setMetadataApplication(String metadataApplication)
 	{
 		this.metadataApplication = metadataApplication;
+	}
+	
+	@Override
+	public Boolean isBackgroundAsSlideMaster()
+	{
+		return isBackgroundAsSlideMaster;
+	}
+	
+	/**
+	 * 
+	 */
+	public void setMetadataApplication(Boolean isBackgroundAsSlideMaster)
+	{
+		this.isBackgroundAsSlideMaster = isBackgroundAsSlideMaster;
+	}
+	
+	@Override
+	public Integer getSlideMasterReport()
+	{
+		return slideMasterReport;
+	}
+	
+	/**
+	 * 
+	 */
+	public void setSlideMasterReport(Integer slideMasterReport)
+	{
+		this.slideMasterReport = slideMasterReport;
+	}
+	
+	@Override
+	public Integer getSlideMasterPage()
+	{
+		return slideMasterPage;
+	}
+	
+	/**
+	 * 
+	 */
+	public void setSlideMasterPage(Integer slideMasterPage)
+	{
+		this.slideMasterPage = slideMasterPage;
 	}
 }
